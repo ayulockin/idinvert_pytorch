@@ -16,6 +16,7 @@ from utils.editor import manipulate
 from utils.visualizer import load_image
 from utils.visualizer import HtmlPageVisualizer
 
+import wandb
 
 def parse_args():
   """Parses arguments."""
@@ -121,11 +122,24 @@ def main():
                      is_boundary_layerwise=True)
 
   for img_idx in tqdm(range(num_images), leave=False):
-    output_images = generator.easy_synthesize(
-        codes[img_idx], latent_space_type='wp')['image']
+    wandb_images = []
+    img_name = image_list[img_idx]
+    ori_image = load_image(f'{image_dir}/{img_name}_ori.png')
+    wandb_images.append(ori_image)
+
+    run = wandb.init(entity='wandb', project='in-domain-gan', job_type='manipulate', 
+                        name='manipulate-{}'.format(img_name))
+
+    output_images = generator.easy_synthesize(codes[img_idx], latent_space_type='wp')['image']
+    wandb_images.extend(output_images)
+
     for s, output_image in enumerate(output_images):
       visualizer.set_cell(img_idx, s + 3, image=output_image)
 
+    wandb.log({"manipulate image": [wandb.Image(image) for image in wandb_images]})
+
+    run.join()
+  
   # Save results.
   visualizer.save(f'{output_dir}/{job_name}.html')
 
