@@ -17,6 +17,8 @@ from utils.logger import setup_logger
 from utils.visualizer import HtmlPageVisualizer
 from utils.visualizer import save_image, load_image, resize_image
 
+import wandb
+from PIL import Image
 
 def parse_args():
   """Parses arguments."""
@@ -45,6 +47,8 @@ def parse_args():
                       help='Image size for visualization. (default: 256)')
   parser.add_argument('--gpu_id', type=str, default='0',
                       help='Which GPU(s) to use. (default: `0`)')
+  parser.add_argument('--wandb', type=bool, default=True,
+                      help='Enable W&B logging for experiment tracking and visualization.')
   return parser.parse_args()
 
 
@@ -90,6 +94,9 @@ def main():
   logger.info(f'Start inversion.')
   latent_codes = []
   for img_idx in tqdm(range(len(image_list)), leave=False):
+    if args.wandb:
+      run = wandb.init(project='in-domain-gan')
+
     image_path = image_list[img_idx]
     image_name = os.path.splitext(os.path.basename(image_path))[0]
     image = resize_image(load_image(image_path), (image_size, image_size))
@@ -98,16 +105,34 @@ def main():
     save_image(f'{output_dir}/{image_name}_ori.png', image)
     save_image(f'{output_dir}/{image_name}_enc.png', viz_results[1])
     save_image(f'{output_dir}/{image_name}_inv.png', viz_results[-1])
+
+    # log images in wandb for easy visualization.
+    wandb.log({"inverted image": [wandb.Image(image, caption="original image")]})
+    wandb.log({"inverted image": [wandb.Image(viz_results[1], caption="encoder image")]})
+    wandb.log({"inverted image": [wandb.Image(viz_results[-1], caption="inverted image")]})
+
     visualizer.set_cell(img_idx, 0, text=image_name)
     visualizer.set_cell(img_idx, 1, image=image)
     for viz_idx, viz_img in enumerate(viz_results[1:]):
       visualizer.set_cell(img_idx, viz_idx + 2, image=viz_img)
+    
+    if args.wandb:
+      run.join()
 
   # Save results.
   os.system(f'cp {args.image_list} {output_dir}/image_list.txt')
   np.save(f'{output_dir}/inverted_codes.npy',
           np.concatenate(latent_codes, axis=0))
   visualizer.save(f'{output_dir}/inversion.html')
+
+  if args.wandb:
+      run = wandb.init(project='in-domain-gan')
+
+  # log HTML to render in W&B
+  wandb.log({"inverted html": wandb.Html(open(output_dir+'/inversion.html'))})
+
+  if args.wandb:
+      run.join()
 
 
 if __name__ == '__main__':

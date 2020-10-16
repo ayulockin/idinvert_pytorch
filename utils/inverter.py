@@ -11,6 +11,8 @@ from models.stylegan_generator import StyleGANGenerator
 from models.stylegan_encoder import StyleGANEncoder
 from models.perceptual_model import PerceptualModel
 
+import wandb
+
 __all__ = ['StyleGANInverter']
 
 
@@ -180,6 +182,7 @@ class StyleGANInverter(object):
       loss_pix = torch.mean((x - x_rec) ** 2)
       loss = loss + loss_pix * self.loss_pix_weight
       log_message = f'loss_pix: {_get_tensor_value(loss_pix):.3f}'
+      wandb.log({'loss_pix': _get_tensor_value(loss_pix)})
 
       # Perceptual loss.
       if self.loss_feat_weight:
@@ -188,6 +191,7 @@ class StyleGANInverter(object):
         loss_feat = torch.mean((x_feat - x_rec_feat) ** 2)
         loss = loss + loss_feat * self.loss_feat_weight
         log_message += f', loss_feat: {_get_tensor_value(loss_feat):.3f}'
+        wandb.log({'loss_feat': _get_tensor_value(loss_feat)})
 
       # Regularization loss.
       if self.loss_reg_weight:
@@ -195,8 +199,11 @@ class StyleGANInverter(object):
         loss_reg = torch.mean((z - z_rec) ** 2)
         loss = loss + loss_reg * self.loss_reg_weight
         log_message += f', loss_reg: {_get_tensor_value(loss_reg):.3f}'
+        wandb.log({'loss_reg': _get_tensor_value(loss_reg)})
 
       log_message += f', loss: {_get_tensor_value(loss):.3f}'
+      wandb.log({'loss': _get_tensor_value(loss)})
+      
       pbar.set_description_str(log_message)
       if self.logger:
         self.logger.debug(f'Step: {step:05d}, '
