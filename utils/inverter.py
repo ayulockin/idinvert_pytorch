@@ -90,7 +90,6 @@ class StyleGANInverter(object):
     self.loss_reg_weight = regularization_loss_weight
     assert self.loss_pix_weight > 0
 
-
   def preprocess(self, image):
     """Preprocesses a single image.
 
@@ -143,7 +142,7 @@ class StyleGANInverter(object):
     z = _get_tensor_value(self.E.net(x).view(1, *self.encode_dim))
     return z.astype(np.float32)
 
-  def invert(self, image, num_viz=0):
+  def invert(self, image, num_viz=0, wandb_run=None):
     """Inverts the given image to a latent code.
 
     Basically, this function is based on gradient descent algorithm.
@@ -182,7 +181,8 @@ class StyleGANInverter(object):
       loss_pix = torch.mean((x - x_rec) ** 2)
       loss = loss + loss_pix * self.loss_pix_weight
       log_message = f'loss_pix: {_get_tensor_value(loss_pix):.3f}'
-      wandb.log({'loss_pix': _get_tensor_value(loss_pix)})
+      if wandb_run:
+        wandb.log({'loss_pix': _get_tensor_value(loss_pix)})
 
       # Perceptual loss.
       if self.loss_feat_weight:
@@ -191,7 +191,8 @@ class StyleGANInverter(object):
         loss_feat = torch.mean((x_feat - x_rec_feat) ** 2)
         loss = loss + loss_feat * self.loss_feat_weight
         log_message += f', loss_feat: {_get_tensor_value(loss_feat):.3f}'
-        wandb.log({'loss_feat': _get_tensor_value(loss_feat)})
+        if wandb_run:
+          wandb.log({'loss_feat': _get_tensor_value(loss_feat)})
 
       # Regularization loss.
       if self.loss_reg_weight:
@@ -199,11 +200,13 @@ class StyleGANInverter(object):
         loss_reg = torch.mean((z - z_rec) ** 2)
         loss = loss + loss_reg * self.loss_reg_weight
         log_message += f', loss_reg: {_get_tensor_value(loss_reg):.3f}'
-        wandb.log({'loss_reg': _get_tensor_value(loss_reg)})
+        if wandb_run:
+          wandb.log({'loss_reg': _get_tensor_value(loss_reg)})
 
       log_message += f', loss: {_get_tensor_value(loss):.3f}'
-      wandb.log({'loss': _get_tensor_value(loss)})
-      
+      if wandb_run:
+        wandb.log({'loss': _get_tensor_value(loss)})
+
       pbar.set_description_str(log_message)
       if self.logger:
         self.logger.debug(f'Step: {step:05d}, '
@@ -220,9 +223,9 @@ class StyleGANInverter(object):
 
     return _get_tensor_value(z), viz_results
 
-  def easy_invert(self, image, num_viz=0):
+  def easy_invert(self, image, num_viz=0, wandb_run=None):
     """Wraps functions `preprocess()` and `invert()` together."""
-    return self.invert(self.preprocess(image), num_viz)
+    return self.invert(self.preprocess(image), num_viz, wandb_run)
 
   def diffuse(self,
               target,
@@ -231,7 +234,8 @@ class StyleGANInverter(object):
               center_y,
               crop_x,
               crop_y,
-              num_viz=0):
+              num_viz=0,
+              wandb_run=None):
     """Diffuses the target image to a context image.
 
     Basically, this function is a motified version of `self.invert()`. More
@@ -288,6 +292,8 @@ class StyleGANInverter(object):
       loss_pix = torch.mean(((x - x_rec) * mask) ** 2)
       loss = loss + loss_pix * self.loss_pix_weight
       log_message = f'loss_pix: {_get_tensor_value(loss_pix):.3f}'
+      if wandb_run:
+        wandb.log({'loss_pix': _get_tensor_value(loss_pix)})
 
       # Perceptual loss.
       if self.loss_feat_weight:
@@ -296,8 +302,13 @@ class StyleGANInverter(object):
         loss_feat = torch.mean((x_feat - x_rec_feat) ** 2)
         loss = loss + loss_feat * self.loss_feat_weight
         log_message += f', loss_feat: {_get_tensor_value(loss_feat):.3f}'
+        if wandb_run:
+          wandb.log({'loss_feat': _get_tensor_value(loss_feat)})
 
       log_message += f', loss: {_get_tensor_value(loss):.3f}'
+      if wandb_run:
+        wandb.log({'loss': _get_tensor_value(loss)})
+        
       pbar.set_description_str(log_message)
       if self.logger:
         self.logger.debug(f'Step: {step:05d}, '
