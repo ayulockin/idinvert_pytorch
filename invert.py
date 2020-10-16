@@ -95,12 +95,16 @@ def main():
   latent_codes = []
   for img_idx in tqdm(range(len(image_list)), leave=False):
     if args.wandb:
-      run = wandb.init(project='in-domain-gan')
+      run = wandb.init(entity='wandb', project='in-domain-gan', job_type='invert', name='inv_{}'.format(img_idx))
 
     image_path = image_list[img_idx]
     image_name = os.path.splitext(os.path.basename(image_path))[0]
     image = resize_image(load_image(image_path), (image_size, image_size))
-    code, viz_results = inverter.easy_invert(image, num_viz=args.num_results)
+    if args.wandb:
+      code, viz_results = inverter.easy_invert(image, num_viz=args.num_results, wandb_run=run.name)
+    else:
+      code, viz_results = inverter.easy_invert(image, num_viz=args.num_results)
+
     latent_codes.append(code)
     save_image(f'{output_dir}/{image_name}_ori.png', image)
     save_image(f'{output_dir}/{image_name}_enc.png', viz_results[1])
@@ -126,7 +130,7 @@ def main():
   visualizer.save(f'{output_dir}/inversion.html')
 
   if args.wandb:
-      run = wandb.init(project='in-domain-gan')
+      run = wandb.init(entity='wandb', project='in-domain-gan', name='invert-html')
 
   # log HTML to render in W&B
   wandb.log({"inverted html": wandb.Html(open(output_dir+'/inversion.html'))})

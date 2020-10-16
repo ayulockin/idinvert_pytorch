@@ -20,6 +20,7 @@ from utils.logger import setup_logger
 from utils.visualizer import HtmlPageVisualizer
 from utils.visualizer import load_image, resize_image
 
+import wandb
 
 def parse_args():
   """Parses arguments."""
@@ -56,6 +57,8 @@ def parse_args():
                       help='Image size for visualization. (default: 256)')
   parser.add_argument('--gpu_id', type=str, default='0',
                       help='Which GPU(s) to use. (default: `0`)')
+  parser.add_argument('--wandb', type=bool, default=True,
+                      help='Enable W&B logging for experiment tracking and visualization.')         
   return parser.parse_args()
 
 
@@ -118,6 +121,16 @@ def main():
     visualizer.set_cell(target_idx * num_contexts, 0, image=target_image)
     for context_idx in tqdm(range(num_contexts), desc='Context ID',
                             leave=False):
+      
+      if args.wandb and context_idx>0:
+        run = wandb.init(entity='wandb', project='in-domain-gan', 
+                        job_type='diffuse', 
+                        name=target_list[target_idx]+'-diff-{}'.format(context_idx))
+
+        run_name = run.name
+      else:
+        run_name = None
+
       row_idx = target_idx * num_contexts + context_idx
       context_image = resize_image(load_image(context_list[context_idx]),
                                    (image_size, image_size))
@@ -128,10 +141,16 @@ def main():
                                                 center_y=args.center_y,
                                                 crop_x=args.crop_size,
                                                 crop_y=args.crop_size,
-                                                num_viz=args.num_results)
+                                                num_viz=args.num_results,
+                                                wandb_run=run_name)
       for viz_idx, viz_img in enumerate(viz_results):
         visualizer.set_cell(row_idx, viz_idx + 2, image=viz_img)
       latent_codes.append(code)
+
+      if args.wandb and context_idx>0:
+        run.join()
+
+    break
 
   # Save results.
 
@@ -141,6 +160,15 @@ def main():
           np.concatenate(latent_codes, axis=0))
   visualizer.save(f'{output_dir}/{job_name}.html')
 
+  if args.wandb:
+      run = wandb.init(entity='wandb', project='in-domain-gan', job_type='diffuse', 
+                        name='diffuse-html')
+
+  # log HTML to render in W&B
+  wandb.log({"diffusion html": wandb.Html(open(output_dir+'/'+job_name+'.html'))})
+
+  if args.wandb:
+      run.join()
 
 if __name__ == '__main__':
   main()
