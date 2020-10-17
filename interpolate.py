@@ -19,6 +19,7 @@ from utils.editor import interpolate
 from utils.visualizer import load_image
 from utils.visualizer import HtmlPageVisualizer
 
+import wandb
 
 def parse_args():
   """Parses arguments."""
@@ -39,6 +40,8 @@ def parse_args():
                       help='Image size for visualization. (default: 256)')
   parser.add_argument('--gpu_id', type=str, default='0',
                       help='Which GPU(s) to use. (default: `0`)')
+  parser.add_argument('--wandb', type=bool, default=True,
+                      help='Enable W&B logging for experiment tracking and visualization.')
   return parser.parse_args()
 
 
@@ -104,6 +107,12 @@ def main():
                         dst_codes=dst_codes,
                         step=step)
     for dst_idx in tqdm(range(num_dst), leave=False):
+      if args.wandb:
+        run = wandb.init(entity='wandb', 
+                         project='in-domain-gan', 
+                         job_type='interpolate', 
+                         name='interp_scr_{}_dst__{}'.format(src_idx, dst_idx))
+      
       dst_path = f'{dst_dir}/{dst_list[dst_idx]}_ori.png'
       output_images = generator.easy_synthesize(
           codes[dst_idx], latent_space_type='wp')['image']
@@ -113,6 +122,24 @@ def main():
       visualizer.set_cell(row_idx, step + 1, image=load_image(dst_path))
       for s, output_image in enumerate(output_images):
         visualizer.set_cell(row_idx, s + 1, image=output_image)
+
+      # scr_image = load_image(src_path)
+      # dst_image = load_image(dst_path)
+      # print(scr_image.shape, dst_image.shape, type(output_images), output_images[0].shape, len(output_images))
+      # break
+
+      wandb_images = []
+      if args.wandb:
+        scr_image = load_image(src_path)
+        dst_image = load_image(dst_path)
+        wandb_images.append(scr_image)
+        wandb_images.extend(output_images[1:-1])
+        wandb_images.append(dst_image)
+        
+        wandb.log({"intepolated image": [wandb.Image(image) for image in wandb_images]})
+
+        run.join()
+    break
 
   # Save results.
   visualizer.save(f'{output_dir}/{job_name}.html')

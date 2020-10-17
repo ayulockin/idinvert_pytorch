@@ -95,7 +95,7 @@ def main():
   latent_codes = []
   for img_idx in tqdm(range(len(image_list)), leave=False):
     if args.wandb:
-      run = wandb.init(entity='wandb', project='in-domain-gan', job_type='invert', name='inv_{}'.format(img_idx))
+      run = wandb.init(project='in-domain-gan', job_type='invert', name='inv_{}'.format(img_idx))
 
     image_path = image_list[img_idx]
     image_name = os.path.splitext(os.path.basename(image_path))[0]
@@ -111,9 +111,11 @@ def main():
     save_image(f'{output_dir}/{image_name}_inv.png', viz_results[-1])
 
     # log images in wandb for easy visualization.
-    wandb.log({"inverted image": [wandb.Image(image, caption="original image")]})
-    wandb.log({"inverted image": [wandb.Image(viz_results[1], caption="encoder image")]})
-    wandb.log({"inverted image": [wandb.Image(viz_results[-1], caption="inverted image")]})
+    wandb.log({"domain-guided-encoder-image": [wandb.Image(image, caption="original image")]})
+    wandb.log({"domain-guided-encoder-image": [wandb.Image(viz_results[1], caption="encoder image")]})
+
+    wandb.log({"domain-regularized-optimization-image": [wandb.Image(image, caption="original image")]})
+    wandb.log({"domain-regularized-optimization-image": [wandb.Image(viz_results[-1], caption="inverted image")]})
 
     visualizer.set_cell(img_idx, 0, text=image_name)
     visualizer.set_cell(img_idx, 1, image=image)
@@ -130,7 +132,7 @@ def main():
   visualizer.save(f'{output_dir}/inversion.html')
 
   if args.wandb:
-      run = wandb.init(entity='wandb', project='in-domain-gan', name='invert-html')
+      run = wandb.init(project='in-domain-gan', job_type='invert', name='invert-html')
 
   # log HTML to render in W&B
   wandb.log({"inverted html": wandb.Html(open(output_dir+'/inversion.html'))})

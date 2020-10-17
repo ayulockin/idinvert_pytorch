@@ -123,7 +123,7 @@ def main():
                             leave=False):
       
       if args.wandb and context_idx>0:
-        run = wandb.init(entity='wandb', project='in-domain-gan', 
+        run = wandb.init(project='in-domain-gan', 
                         job_type='diffuse', 
                         name=target_list[target_idx].split('/')[-1].split('.')[0]+'-diff-{}'.format(context_idx))
 
@@ -166,7 +166,7 @@ def main():
   visualizer.save(f'{output_dir}/{job_name}.html')
 
   if args.wandb:
-      run = wandb.init(entity='wandb', project='in-domain-gan', job_type='diffuse', 
+      run = wandb.init(project='in-domain-gan', job_type='diffuse', 
                         name='diffuse-html')
 
   # log HTML to render in W&B

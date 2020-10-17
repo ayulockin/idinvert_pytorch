@@ -127,8 +127,8 @@ def main():
     ori_image = load_image(f'{image_dir}/{img_name}_ori.png')
     wandb_images.append(ori_image)
 
-    run = wandb.init(entity='wandb', project='in-domain-gan', job_type='manipulate', 
-                        name='manipulate-{}'.format(img_name))
+    run = wandb.init(project='in-domain-gan', job_type='manipulate', 
+                        name='manipulate-{}-{}'.format(boundary_name, img_name))
 
     output_images = generator.easy_synthesize(codes[img_idx], latent_space_type='wp')['image']
     wandb_images.extend(output_images)
@@ -136,7 +136,7 @@ def main():
     for s, output_image in enumerate(output_images):
       visualizer.set_cell(img_idx, s + 3, image=output_image)
 
-    wandb.log({"manipulate image": [wandb.Image(image) for image in wandb_images]})
+    wandb.log({"manipulate {} image".format(boundary_name): [wandb.Image(image) for image in wandb_images]})
 
     run.join()
   
