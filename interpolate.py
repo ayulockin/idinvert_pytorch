@@ -108,8 +108,7 @@ def main():
                         step=step)
     for dst_idx in tqdm(range(num_dst), leave=False):
       if args.wandb:
-        run = wandb.init(entity='wandb', 
-                         project='in-domain-gan', 
+        run = wandb.init(project='in-domain-gan', 
                          job_type='interpolate', 
                          name='interp_scr_{}_dst__{}'.format(src_idx, dst_idx))
       
